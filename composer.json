@@ -25,6 +25,11 @@
         "yiisoft/yii2-redis": "^2.0@dev",
         "stichoza/google-translate-php": "^5.3.0"
     },
+    "require-dev": {
+        "kartik-v/yii2-widget-select2": "dev-master",
+        "croacworks/yii2export": "dev-master",
+        "kartik-v/yii2-widget-datetimepicker": "dev-master"
+    },
     "autoload": {
         "psr-4": {
             "croacworks\\yii2basic\\": "src"
