@@ -2,12 +2,12 @@
 
 namespace croacworks\yii2basic\controllers;
 
+use Yii;
 use croacworks\yii2basic\models\License;
 use croacworks\yii2basic\models\Log;
 use croacworks\yii2basic\models\Role;
 use croacworks\yii2basic\models\User;
 use croacworks\yii2basic\models\UserGroup;
-use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
@@ -50,7 +50,7 @@ class AuthorizationController extends ControllerCommon
 
         return end($user_groups);
     }
-    
+
     public static function isAdmin(): bool
     {
         return !self::isGuest() && UserGroup::find()
