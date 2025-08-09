@@ -18,8 +18,7 @@ use yii\web\Response;
 /**
  * Description of Controller
  *
- * @author Honald Carvalho
- * 
+ * @author CroacWorks
  * 
  */
 
