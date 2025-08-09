@@ -34,6 +34,23 @@ class AuthorizationController extends ControllerCommon
             : self::User()?->getUserGroupsId();
     }
 
+    static function userGroup()
+    {
+        $user_groups = [];
+
+        $authHeader = Yii::$app->request->getHeaders()->get('Authorization');
+        if (!$authHeader || !preg_match('/^Bearer\s+(.*?)$/', $authHeader, $matches)) {
+            if (!self::isGuest())
+                return Yii::$app->session->get('group')->id;
+        }
+
+        $user = self::getUserByToken();
+        if ($user)
+            $user_groups = $user->getUserGroupsId();
+
+        return end($user_groups);
+    }
+    
     public static function isAdmin(): bool
     {
         return !self::isGuest() && UserGroup::find()
