@@ -14,6 +14,7 @@ use yii\web\NotFoundHttpException;
 
 class AuthorizationController extends ControllerCommon
 {
+    
     const ADMIN_GROUP_ID = 2;
     public $free = ['login', 'signup', 'error'];
 
