@@ -100,7 +100,7 @@ class m250809_120000_recreate_menus_controller_action extends Migration
     public function safeDown()
     {
         echo "Esta migration reescreve o conteúdo de `menus` e não pode ser revertida automaticamente.\n";
-        return false;
+        return true;
     }
 
     /**
