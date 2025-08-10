@@ -122,7 +122,7 @@ if(!empty($params->file_id) && $params->file != null){
                             }
                                     
                         }else{
-                            $visible_parts = explode(';',$item['visible']);
+                            $visible_parts = !empty($item['visible']) ? explode(';',$item['visible']) : [];
                             $isVisible = true;
                             
                             if(count($visible_parts) > 1){
