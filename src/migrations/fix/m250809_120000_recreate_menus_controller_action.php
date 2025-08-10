@@ -4,14 +4,14 @@ use yii\db\Migration;
 use yii\helpers\Inflector;
 
 /**
- * Recria todos os itens do menu no formato novo, preenchendo `controller` (FQCN)
- * e `action` a partir de `visible` + `path` quando necessário.
+ * Recreates all menu items in the new format, populating `controller` (FQCN)
+ * and `action` from `visible` + `path` when necessary.
  *
- * - Preserva os IDs e os `menu_id` (hierarquia).
- * - Mantém label, ícones, url, active, order, only_admin, status.
- * - Converte `visible` "controller-id;action" para FQCN + action.
- * - Quando não houver action em `visible`, usa '*'.
- * - Para grupos/headers (sem rota), deixa `controller`/`action` nulos.
+ * - Preserves IDs and `menu_id` (hierarchy).
+ * - Keeps label, icons, url, active, order, only_admin, status.
+ * - Converts `visible` "controller-id;action" to FQCN + action.
+ * - If no action in `visible`, uses '*'.
+ * - For groups/headers (without route), leaves `controller`/`action` null.
  */
 class m250809_120000_recreate_menus_controller_action extends Migration
 {
@@ -19,7 +19,7 @@ class m250809_120000_recreate_menus_controller_action extends Migration
     {
         $this->execute('SET foreign_key_checks = 0;');
 
-        // Carrega todos os menus existentes
+        // Load all existing menus
         $menus = (new \yii\db\Query())
             ->from('menus')
             ->orderBy(['menu_id' => SORT_ASC, 'order' => SORT_ASC, 'id' => SORT_ASC])
@@ -31,17 +31,17 @@ class m250809_120000_recreate_menus_controller_action extends Migration
             $fqcn   = $menu['controller'] ?? null;
             $action = $menu['action'] ?? null;
 
-            // Se ainda não tem controller/action, tenta converter a partir de visible + path
+            // If controller/action are not yet set, try to convert from visible + path
             if (empty($fqcn)) {
-                $visible = $menu['visible'] ?? '';
+                $visible_original = $menu['visible'] ?? ''; // Preserve the original visible value
                 $path    = $menu['path'] ?? 'app';
 
-                if ($visible) {
-                    if (strpos($visible, ';') !== false) {
-                        [$controllerId, $actionFromVisible] = explode(';', $visible, 2);
+                if ($visible_original) {
+                    if (strpos($visible_original, ';') !== false) {
+                        [$controllerId, $actionFromVisible] = explode(';', $visible_original, 2);
                         $actionFromVisible = trim($actionFromVisible) !== '' ? trim($actionFromVisible) : '*';
                     } else {
-                        $controllerId      = $visible;
+                        $controllerId      = $visible_original;
                         $actionFromVisible = '*';
                     }
 
@@ -49,17 +49,17 @@ class m250809_120000_recreate_menus_controller_action extends Migration
 
                     switch ($path) {
                         case 'app':
-                            $fqcn = "app\\controllers\\{$controllerBase}";
+                            $fqcn = "app\controllers{$controllerBase}";
                             break;
                         case 'app/custom':
-                            $fqcn = "app\\controllers\\custom\\{$controllerBase}";
+                            $fqcn = "app\controllers\custom{$controllerBase}";
                             break;
                         case 'croacworks/controllers':
-                            $fqcn = "croacworks\\yii2basic\\controllers\\{$controllerBase}";
+                            $fqcn = "croacworks\yii2basic\controllers{$controllerBase}";
                             break;
                         default:
                             // Ex.: 'vendor/pacote/controllers' -> 'vendor\pacote\controllers\ControllerName'
-                            $fqcn = str_replace('/', '\\', $path) . "\\{$controllerBase}";
+                            $fqcn = str_replace('/', '\'', $path) . "{$controllerBase}";
                             break;
                     }
 
@@ -67,7 +67,7 @@ class m250809_120000_recreate_menus_controller_action extends Migration
                 }
             }
 
-            // Para headers ou itens sem rota, mantém null
+            // For headers or items without a route, keep null
             if (isset($fqcn) && $fqcn !== '' && empty($action)) {
                 $action = '*';
             }
@@ -85,13 +85,14 @@ class m250809_120000_recreate_menus_controller_action extends Migration
                 'order'      => isset($menu['order']) ? (int)$menu['order'] : 0,
                 'only_admin' => isset($menu['only_admin']) ? (int)$menu['only_admin'] : 0,
                 'status'     => isset($menu['status']) ? (int)$menu['status'] : 1,
+                'visible'    => $menu['visible'] ?? null, // <-- Add this line
             ];
         }
 
-        // Limpa e reinsere já normalizado
+        // Clear and reinsert normalized data
         $this->delete('menus');
 
-        // Reinsere preservando IDs e hierarquia
+        // Reinsert preserving IDs and hierarchy
         foreach ($normalized as $row) {
             Yii::$app->db->createCommand()->insert('menus', $row)->execute();
         }
@@ -101,7 +102,7 @@ class m250809_120000_recreate_menus_controller_action extends Migration
 
     public function safeDown()
     {
-        echo "Esta migration reescreve o conteúdo de `menus` e não pode ser revertida automaticamente.\n";
+        echo "This migration rewrites the content of `menus` and cannot be automatically reverted.\n";
         return false;
     }
 }
