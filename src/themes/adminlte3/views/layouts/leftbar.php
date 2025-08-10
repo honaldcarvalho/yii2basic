@@ -75,12 +75,11 @@ if(!empty($params->file_id) && $params->file != null){
                     $items = Menu::find()->where(['menu_id'=>$id,'status'=>true])->orderBy(['order'=>SORT_ASC])->all();
 
                     $nodes = [];
-                    $visible_parts  = [];
                     foreach($items as $item){
 
                         if($item['url'] == '#' || ($item['url'] != '#' && $item['menu_id'] == null)) {
 
-                            $visible_parts = !empty($item['visible']) ? explode(';',$item['visible']) : [];
+                            $visible_parts = explode(';',$item['visible']);
                             $isVisible = true;
                             $item_nodes = getNodes($controller_id,$item['id']);
 
@@ -122,7 +121,7 @@ if(!empty($params->file_id) && $params->file != null){
                             }
                                     
                         }else{
-                            $visible_parts = !empty($item['visible']) ? explode(';',$item['visible']) : [];
+                            $visible_parts = explode(';',$item['visible']);
                             $isVisible = true;
                             
                             if(count($visible_parts) > 1){
