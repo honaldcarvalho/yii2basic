@@ -1,7 +1,7 @@
 <?php
 
 use croacworks\yii2basic\controllers\ControllerCommon;
-use croacworks\yii2basic\controllers\AuthorizationController;
+use croacworks\yii2basic\controllers\AuthorizationController as AuthController;
 use croacworks\yii2basic\models\Menu;
 use croacworks\yii2basic\models\Configuration;
 use croacworks\yii2basic\widgets\Menu as WidgetsMenu;
@@ -88,7 +88,7 @@ if(!empty($params->file_id) && $params->file != null){
                             }else {
 
                                 if(count($visible_parts) > 1){
-                                    $isVisible =  AuthorizationController::verAuthorization($visible_parts[0],$visible_parts[1],null,$item['path']);
+                                    $isVisible =  AuthController::verAuthorization($visible_parts[0],$visible_parts[1],null,$item['path']);
                                 }else if(count($visible_parts) === 1){
                                     //verify if someone item is visible, case yes, show menu item 
                                     foreach($item_nodes as $item_node){
@@ -116,7 +116,7 @@ if(!empty($params->file_id) && $params->file != null){
                                 $node['active'] = ($controller_id == "{$item['active']}") || ($controller_id."/".Yii::$app->controller->action->id  == "{$item['active']}");
                             }
 
-                            if(!$item['only_admin'] || $item['only_admin'] &&  AuthorizationController::isAdmin()) {
+                            if(!$item['only_admin'] || $item['only_admin'] &&  AuthController::isAdmin()) {
                                 $nodes[] = $node;
                             }
                                     
@@ -125,12 +125,12 @@ if(!empty($params->file_id) && $params->file != null){
                             $isVisible = true;
                             
                             if(count($visible_parts) > 1){
-                                $isVisible =  AuthorizationController::verAuthorization($visible_parts[0],$visible_parts[1],null,$item['path']);
+                                $isVisible =  AuthController::verAuthorization($visible_parts[0],$visible_parts[1],null,$item['path']);
                             }else if(empty($visible_parts)){
                                 $isVisible = false;
                             }
 
-                            if(!$item['only_admin'] || $item['only_admin'] &&  AuthorizationController::isAdmin()) {
+                            if(!$item['only_admin'] || $item['only_admin'] &&  AuthController::isAdmin()) {
                                 $nodes[] = [
                                     'label' => Yii::t('app', $item['label']),
                                     'icon'=> "{$item['icon']}",
