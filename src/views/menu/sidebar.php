@@ -79,7 +79,7 @@ if(!empty($params->file_id) && $params->file != null){
 
                         if($item['url'] == '#' || ($item['url'] != '#' && $item['menu_id'] == null)) {
 
-                            $visible_parts = explode(';',$item['visible']);
+                            $visible_parts = $item['visible'] ? explode(';',$item['visible']) : [];
                             $isVisible = true;
                             $item_nodes = getNodes($controller_id,$item['id']);
 
@@ -121,7 +121,7 @@ if(!empty($params->file_id) && $params->file != null){
                             }
                                     
                         }else{
-                            $visible_parts = explode(';',$item['visible']);
+                            $visible_parts = $item['visible'] ? explode(';',$item['visible']) : [];
                             $isVisible = true;
                             
                             if(count($visible_parts) > 1){
