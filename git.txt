@@ -1,2 +1,4 @@
-git tag -a v1.1.8 -m "Release 1.1.8"
-git push origin v1.1.8
+git tag -d v1.1.8
+git push origin :refs/tags/v1.1.8
+git tag -a v1.1.9 -m "new release"
+git push origin v1.1.9
