@@ -3,24 +3,12 @@
 use yii\db\Migration;
 use yii\helpers\Inflector;
 
-/**
- * Recria todos os itens do menu no formato novo, preenchendo `controller` (FQCN)
- * e `action` a partir de `visible` + `path` quando necessário.
- *
- * - Preserva os IDs e os `menu_id` (hierarquia).
- * - Mantém label, ícones, url, active, order, only_admin, status.
- * - Converte `visible` "controller-id;action" para FQCN + action.
- * - Quando não houver action em `visible`, usa '*'.
- * - Para grupos/headers (sem rota), deixa `controller`/`action` nulos.
- * - Agora também regrava `visible` (ou mantém o original não-vazio).
- */
 class m250809_120000_recreate_menus_controller_action extends Migration
 {
     public function safeUp()
     {
         $this->execute('SET foreign_key_checks = 0;');
 
-        // Carrega todos os menus existentes
         $menus = (new \yii\db\Query())
             ->from('menus')
             ->orderBy(['menu_id' => SORT_ASC, 'order' => SORT_ASC, 'id' => SORT_ASC])
@@ -32,8 +20,11 @@ class m250809_120000_recreate_menus_controller_action extends Migration
             $fqcn   = $menu['controller'] ?? null;
             $action = $menu['action'] ?? null;
 
-            // Se ainda não tem controller/action, tenta converter a partir de visible + path
-            if (empty($fqcn)) {
+            // 1) Se já existe FQCN, normaliza vendor -> croacworks\yii2basic
+            if (!empty($fqcn)) {
+                $fqcn = $this->normalizeVendorNamespace($fqcn);
+            } else {
+                // 2) Caso contrário, deriva de visible + path
                 $visible = $menu['visible'] ?? '';
                 $path    = $menu['path'] ?? 'app';
 
@@ -47,44 +38,28 @@ class m250809_120000_recreate_menus_controller_action extends Migration
                     }
 
                     $controllerBase = Inflector::id2camel($controllerId, '-') . 'Controller';
+                    $baseNs = $this->resolveNamespaceFromPath($path); // já migra weebz -> croacworks
 
-                    switch ($path) {
-                        case 'app':
-                            $fqcn = "app\\controllers\\{$controllerBase}";
-                            break;
-                        case 'app/custom':
-                            $fqcn = "app\\controllers\\custom\\{$controllerBase}";
-                            break;
-                        case 'croacworks/controllers':
-                            $fqcn = "croacworks\\yii2basic\\controllers\\{$controllerBase}";
-                            break;
-                        default:
-                            // Ex.: 'vendor/pacote/controllers' -> 'vendor\pacote\controllers\ControllerName'
-                            $fqcn = str_replace('/', '\\', $path) . "\\{$controllerBase}";
-                            break;
-                    }
-
+                    $fqcn   = $baseNs . '\\' . $controllerBase;
                     $action = $action ?? $actionFromVisible;
                 }
             }
 
-            // Para headers ou itens sem rota, mantém null
-            if (isset($fqcn) && $fqcn !== '' && empty($action)) {
+            // Se tem FQCN e não tem action, assume '*'
+            if (!empty($fqcn) && empty($action)) {
                 $action = '*';
             }
 
-            // ===== Novo: calcular/garantir o `visible` =====
+            // Regrava `visible` se estiver vazio
             $visibleOriginal = isset($menu['visible']) ? trim((string)$menu['visible']) : '';
             $visibleValue    = $visibleOriginal;
 
-            // Deriva controller-id a partir do FQCN (quando existir)
             $computedControllerId = null;
             if (!empty($fqcn)) {
-                $class = preg_replace('~^.*\\\\~', '', $fqcn);         // ex.: ClientController
-                $base  = preg_replace('/Controller$/', '', $class);    // ex.: Client
-                $computedControllerId = Inflector::camel2id($base);    // ex.: client
+                $class = preg_replace('~^.*\\\\~', '', $fqcn);      // ClientController
+                $base  = preg_replace('/Controller$/', '', $class); // Client
+                $computedControllerId = Inflector::camel2id($base); // client
             } elseif (!empty($visibleOriginal)) {
-                // Quando veio de visible "client;index"
                 [$ctrlId] = array_pad(explode(';', $visibleOriginal, 2), 2, null);
                 $computedControllerId = $ctrlId ?: null;
             }
@@ -92,7 +67,6 @@ class m250809_120000_recreate_menus_controller_action extends Migration
             if ($visibleValue === '' && $computedControllerId) {
                 $visibleValue = $computedControllerId . ';' . ($action ?: '*');
             }
-            // ===============================================
 
             $normalized[] = [
                 'id'         => (int)$menu['id'],
@@ -108,16 +82,14 @@ class m250809_120000_recreate_menus_controller_action extends Migration
                 'only_admin' => isset($menu['only_admin']) ? (int)$menu['only_admin'] : 0,
                 'status'     => isset($menu['status']) ? (int)$menu['status'] : 1,
 
-                // Campos legados preservados/normalizados
+                // legados preservados/normalizados (opcional)
                 'visible'    => $visibleValue !== '' ? $visibleValue : null,
                 'path'       => $menu['path'] ?? null,
             ];
         }
 
-        // Limpa e reinsere já normalizado
         $this->delete('menus');
 
-        // Reinsere preservando IDs e hierarquia
         foreach ($normalized as $row) {
             Yii::$app->db->createCommand()->insert('menus', $row)->execute();
         }
@@ -128,6 +100,67 @@ class m250809_120000_recreate_menus_controller_action extends Migration
     public function safeDown()
     {
         echo "Esta migration reescreve o conteúdo de `menus` e não pode ser revertida automaticamente.\n";
-        return true;
+        return false;
+    }
+
+    /**
+     * Converte qualquer namespace antigo do pacote para croacworks\yii2basic\controllers.
+     */
+    private function normalizeVendorNamespace(string $fqcn): string
+    {
+        // weebz\yii2basics\controllers\X -> croacworks\yii2basic\controllers\X
+        $fqcn = preg_replace(
+            '~^weebz\\\\yii2basics\\\\controllers\\\\~',
+            'croacworks\\yii2basic\\controllers\\',
+            $fqcn
+        );
+
+        // casos residuais: weebz\controllers\X -> croacworks\yii2basic\controllers\X
+        $fqcn = preg_replace(
+            '~^weebz\\\\controllers\\\\~',
+            'croacworks\\yii2basic\\controllers\\',
+            $fqcn
+        );
+
+        return $fqcn;
+    }
+
+    /**
+     * Mapeia `path` antigo para o namespace base correto.
+     * - "app"              -> "app\controllers"
+     * - "app/custom"       -> "app\controllers\custom"
+     * - Qualquer caminho com "weebz" -> "croacworks\yii2basic\controllers"
+     * - Qualquer caminho com "croacworks" -> "croacworks\yii2basic\controllers"
+     * - Fallback: se terminar com "/controllers", usa esse trecho, mas migrando vendor para croacworks\yii2basic.
+     */
+    private function resolveNamespaceFromPath(string $path): string
+    {
+        $p = trim($path, " \t\n\r\0\x0B/\\");
+        $p = str_replace('\\', '/', $p);
+
+        if ($p === 'app') {
+            return 'app\\controllers';
+        }
+        if ($p === 'app/custom') {
+            return 'app\\controllers\\custom';
+        }
+
+        // Qualquer coisa apontando para o pacote antigo cai no novo
+        if (strpos($p, 'weebz') !== false) {
+            return 'croacworks\\yii2basic\\controllers';
+        }
+
+        // Já no novo vendor
+        if (strpos($p, 'croacworks') !== false) {
+            return 'croacworks\\yii2basic\\controllers';
+        }
+
+        // Fallback: tenta usar o final "*/controllers"
+        if (preg_match('~/(controllers)(/.*)?$~', $p)) {
+            return 'croacworks\\yii2basic\\controllers';
+        }
+
+        // Último recurso: assume pacote novo
+        return 'croacworks\\yii2basic\\controllers';
     }
 }
